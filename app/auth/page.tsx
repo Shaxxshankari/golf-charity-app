@@ -11,7 +11,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-
+ 
   // 🔐 LOGIN
   const login = async () => {
     setLoading(true);
@@ -29,6 +29,7 @@ export default function AuthPage() {
       router.push("/dashboard"); // ✅ redirect
     }
   };
+  
 
   // 🆕 SIGNUP
   const signUp = async () => {
@@ -51,6 +52,7 @@ export default function AuthPage() {
 
     setLoading(false);
   };
+  
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-purple-900">

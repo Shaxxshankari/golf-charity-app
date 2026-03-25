@@ -17,13 +17,13 @@ export default function Dashboard() {
   const [charities, setCharities] = useState<any[]>([]);
   const [selectedCharity, setSelectedCharity] = useState("");
 
-  // 🔐 Get user + protect route
+  // 🔐 Protect route + get user
   useEffect(() => {
     const getUser = async () => {
       const { data } = await supabase.auth.getUser();
 
       if (!data.user) {
-        router.push("/auth"); // 🔥 redirect if not logged in
+        router.replace("/auth"); // ✅ better than push
         return;
       }
 
@@ -34,23 +34,29 @@ export default function Dashboard() {
     };
 
     getUser();
-  }, []);
+  }, [router]);
 
+  // 📥 Fetch scores
   const fetchScores = async (userId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("scores")
       .select("*")
       .eq("user_id", userId)
       .order("date", { ascending: false });
 
+    if (error) console.log(error);
     setScores(data || []);
   };
 
+  // 📥 Fetch charities
   const fetchCharities = async () => {
-    const { data } = await supabase.from("charities").select("*");
+    const { data, error } = await supabase.from("charities").select("*");
+
+    if (error) console.log(error);
     setCharities(data || []);
   };
 
+  // ➕ Add score
   const addScore = async () => {
     if (!score || !user?.id) return;
 
@@ -59,7 +65,7 @@ export default function Dashboard() {
       return;
     }
 
-    await supabase.from("scores").insert([
+    const { error } = await supabase.from("scores").insert([
       {
         user_id: user.id,
         score: Number(score),
@@ -67,21 +73,33 @@ export default function Dashboard() {
       },
     ]);
 
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
     setScore("");
     fetchScores(user.id);
   };
 
+  // 💾 Save charity
   const saveCharity = async () => {
     if (!user) return;
 
-    await supabase
+    const { error } = await supabase
       .from("profiles")
       .update({ charity_id: selectedCharity })
       .eq("id", user.id);
 
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
     alert("Charity saved!");
   };
 
+  // 🎲 Generate draw
   const generateDraw = () => {
     let nums: number[] = [];
 
@@ -93,27 +111,42 @@ export default function Dashboard() {
     return nums;
   };
 
+  // 🧠 Match logic
   const checkMatches = (userScores: any[], draw: number[]) => {
     const scoreValues = userScores.map((s) => s.score);
     return scoreValues.filter((s) => draw.includes(s)).length;
   };
 
+  // 🎯 Run draw + SAVE WINNER 🔥
   const runDraw = async () => {
     const numbers = generateDraw();
     setDrawNumbers(numbers);
 
-    await supabase.from("draws").insert([{ numbers }]);
+    const { data: drawData } = await supabase
+      .from("draws")
+      .insert([{ numbers }])
+      .select()
+      .single();
 
     const matchCount = checkMatches(scores, numbers);
 
     if (matchCount >= 3) {
       alert(`🎉 You got ${matchCount} matches!`);
+
+      // 🔥 Save winner
+      await supabase.from("winners").insert([
+        {
+          user_id: user.id,
+          draw_id: drawData?.id,
+          match_count: matchCount,
+        },
+      ]);
     } else {
       alert(`You got ${matchCount} matches`);
     }
   };
 
-  // ⏳ Loading screen
+  // ⏳ Loading
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-white bg-black">
@@ -128,17 +161,15 @@ export default function Dashboard() {
 
       <div className="min-h-screen bg-gradient-to-br from-[#0f0c29] via-[#302b63] to-[#24243e] flex items-center justify-center text-white px-4">
         <div className="w-full max-w-2xl bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
-          {/* 🔥 Title */}
           <h1 className="text-3xl font-semibold text-center mb-2 tracking-wide">
             Performance Dashboard
           </h1>
 
-          {/* 👤 User */}
           <p className="text-center text-sm text-gray-400 mb-6">
             Logged in as: {user?.email}
           </p>
 
-          {/* ➕ Add Score */}
+          {/* Add Score */}
           <div className="mb-6">
             <h2 className="text-sm text-gray-300 mb-2">Add Score</h2>
 
@@ -148,19 +179,19 @@ export default function Dashboard() {
                 placeholder="Enter score"
                 value={score}
                 onChange={(e) => setScore(e.target.value)}
-                className="flex-1 bg-black/40 border border-white/10 p-2 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="flex-1 bg-black/40 border border-white/10 p-2 rounded text-white"
               />
 
               <button
                 onClick={addScore}
-                className="bg-gradient-to-r from-purple-500 to-blue-500 px-4 py-2 rounded hover:opacity-90 transition"
+                className="bg-gradient-to-r from-purple-500 to-blue-500 px-4 py-2 rounded"
               >
                 Add
               </button>
             </div>
           </div>
 
-          {/* 💝 Charity */}
+          {/* Charity */}
           <div className="mb-6">
             <h2 className="text-sm text-gray-300 mb-2">Select Charity</h2>
 
@@ -179,66 +210,11 @@ export default function Dashboard() {
 
               <button
                 onClick={saveCharity}
-                className="bg-gradient-to-r from-green-400 to-green-600 px-3 py-2 rounded hover:opacity-90"
+                className="bg-gradient-to-r from-green-400 to-green-600 px-3 py-2 rounded"
               >
                 Save
               </button>
             </div>
-
-            <p className="mt-2 text-xs text-gray-400">
-              Selected:{" "}
-              {charities.find((c) => c.id == selectedCharity)?.name || "None"}
-            </p>
-          </div>
-
-          {/* 📊 Scores */}
-          <div className="mb-6">
-            <h2 className="text-sm text-gray-300 mb-2">Your Scores</h2>
-
-            {scores.length === 0 ? (
-              <p className="text-gray-400 text-sm">No scores yet</p>
-            ) : (
-              <ul className="space-y-2">
-                {scores.map((s) => (
-                  <li
-                    key={s.id}
-                    className="flex justify-between items-center bg-white/5 border border-white/10 px-4 py-2 rounded hover:bg-white/10 transition"
-                  >
-                    <span className="text-gray-400 text-sm">Score</span>
-                    <span className="text-lg font-semibold text-white">
-                      {s.score}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {/* 🎲 Draw */}
-          <div className="text-center">
-            <button
-              onClick={runDraw}
-              className="bg-gradient-to-r from-purple-500 to-pink-500 px-5 py-2 rounded-lg hover:opacity-90 transition"
-            >
-              Run Draw 🎲
-            </button>
-
-            {drawNumbers.length > 0 && (
-              <div className="mt-4">
-                <h3 className="text-sm text-gray-300 mb-2">Results</h3>
-
-                <div className="flex justify-center gap-2">
-                  {drawNumbers.map((n, i) => (
-                    <div
-                      key={i}
-                      className="bg-white/10 border border-white/20 px-3 py-1 rounded-full text-white"
-                    >
-                      {n}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
