@@ -12,94 +12,97 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
+  // 🔐 LOGIN
   const login = async () => {
-    setErrorMsg("");
-
-    if (!email || !password) {
-      setErrorMsg("Please fill all fields");
-      return;
-    }
-
     setLoading(true);
+    setErrorMsg("");
 
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    setLoading(false);
-
     if (error) {
-      setErrorMsg("Invalid email or password ❌");
+      setErrorMsg(error.message);
+      setLoading(false);
     } else {
-      router.push("/dashboard");
+      router.push("/dashboard"); // ✅ redirect
     }
   };
 
+  // 🆕 SIGNUP
   const signUp = async () => {
-    setErrorMsg("");
-
-    if (!email || !password) {
-      setErrorMsg("Please fill all fields");
-      return;
-    }
-
     setLoading(true);
+    setErrorMsg("");
 
     const { error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: "http://localhost:3000/dashboard",
+      },
     });
-
-    setLoading(false);
 
     if (error) {
       setErrorMsg(error.message);
     } else {
-      setErrorMsg("Signup successful 🎉 You can login now");
+      alert("Check your email to confirm!");
     }
-  };
-<h1 className="text-3xl font-bold text-center mb-2 text-white">
-  🎯 Golf Charity Platform
-</h1>;
-  return (
-    
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-purple-900">
-      <div className="bg-white/10 backdrop-blur-lg p-8 rounded-2xl shadow-2xl w-80 border border-white/20">
-        <h1 className="text-2xl font-bold text-center mb-6 text-white">
-          Golf Charity 🎯
-        </h1>
 
+    setLoading(false);
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-900 to-purple-900">
+      {/* 🔥 MAIN CARD */}
+      <div className="bg-white/10 backdrop-blur-lg p-8 rounded-2xl shadow-2xl w-80 border border-white/20">
+        {/* TITLE */}
+        <h1 className="text-3xl font-bold text-center mb-2 text-white">
+          🎯 Golf Charity
+        </h1>
+        <p className="text-center text-gray-300 text-sm mb-6">
+          Login or create your account
+        </p>
+
+        {/* EMAIL */}
         <input
           type="email"
           placeholder="Email"
+          value={email}
           className="w-full mb-3 p-3 rounded-lg bg-white/20 text-white placeholder-gray-300 outline-none"
           onChange={(e) => setEmail(e.target.value)}
         />
 
+        {/* PASSWORD */}
         <input
           type="password"
           placeholder="Password"
+          value={password}
           className="w-full mb-4 p-3 rounded-lg bg-white/20 text-white placeholder-gray-300 outline-none"
           onChange={(e) => setPassword(e.target.value)}
         />
 
+        {/* ERROR MESSAGE */}
         {errorMsg && (
           <p className="text-red-400 text-sm mb-3 text-center">{errorMsg}</p>
         )}
 
+        {/* LOGIN BUTTON */}
         <button
           onClick={login}
+          disabled={loading}
           className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg mb-2 transition"
         >
-          {loading ? "Loading..." : "Login"}
+          {loading ? "Please wait..." : "Login"}
         </button>
 
+        {/* SIGNUP BUTTON */}
         <button
           onClick={signUp}
+          disabled={loading}
           className="w-full bg-gray-300 hover:bg-gray-400 text-black py-2 rounded-lg transition"
         >
-          Sign Up
+          {loading ? "Please wait..." : "Sign Up"}
         </button>
       </div>
     </div>
