@@ -17,13 +17,13 @@ export default function Dashboard() {
   const [charities, setCharities] = useState<any[]>([]);
   const [selectedCharity, setSelectedCharity] = useState("");
 
-  // 🔐 Protect route + get user
+  // 🔐 Protect route
   useEffect(() => {
     const getUser = async () => {
       const { data } = await supabase.auth.getUser();
 
       if (!data.user) {
-        router.replace("/auth"); // ✅ better than push
+        router.replace("/auth");
         return;
       }
 
@@ -38,21 +38,18 @@ export default function Dashboard() {
 
   // 📥 Fetch scores
   const fetchScores = async (userId: string) => {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("scores")
       .select("*")
       .eq("user_id", userId)
       .order("date", { ascending: false });
 
-    if (error) console.log(error);
     setScores(data || []);
   };
 
   // 📥 Fetch charities
   const fetchCharities = async () => {
-    const { data, error } = await supabase.from("charities").select("*");
-
-    if (error) console.log(error);
+    const { data } = await supabase.from("charities").select("*");
     setCharities(data || []);
   };
 
@@ -65,18 +62,13 @@ export default function Dashboard() {
       return;
     }
 
-    const { error } = await supabase.from("scores").insert([
+    await supabase.from("scores").insert([
       {
         user_id: user.id,
         score: Number(score),
         date: new Date().toISOString(),
       },
     ]);
-
-    if (error) {
-      alert(error.message);
-      return;
-    }
 
     setScore("");
     fetchScores(user.id);
@@ -86,15 +78,10 @@ export default function Dashboard() {
   const saveCharity = async () => {
     if (!user) return;
 
-    const { error } = await supabase
+    await supabase
       .from("profiles")
       .update({ charity_id: selectedCharity })
       .eq("id", user.id);
-
-    if (error) {
-      alert(error.message);
-      return;
-    }
 
     alert("Charity saved!");
   };
@@ -113,11 +100,11 @@ export default function Dashboard() {
 
   // 🧠 Match logic
   const checkMatches = (userScores: any[], draw: number[]) => {
-    const scoreValues = userScores.map((s) => s.score);
-    return scoreValues.filter((s) => draw.includes(s)).length;
+    const values = userScores.map((s) => s.score);
+    return values.filter((n) => draw.includes(n)).length;
   };
 
-  // 🎯 Run draw + SAVE WINNER 🔥
+  // 🎯 Run draw
   const runDraw = async () => {
     const numbers = generateDraw();
     setDrawNumbers(numbers);
@@ -133,7 +120,6 @@ export default function Dashboard() {
     if (matchCount >= 3) {
       alert(`🎉 You got ${matchCount} matches!`);
 
-      // 🔥 Save winner
       await supabase.from("winners").insert([
         {
           user_id: user.id,
@@ -215,6 +201,23 @@ export default function Dashboard() {
                 Save
               </button>
             </div>
+          </div>
+
+          {/* 🎲 Run Draw */}
+          <div className="mt-6">
+            <button
+              onClick={runDraw}
+              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 py-2 rounded-lg font-semibold hover:opacity-90"
+            >
+              Run Draw 🎲
+            </button>
+
+            {drawNumbers.length > 0 && (
+              <div className="mt-4 text-center">
+                <p className="text-sm text-gray-300 mb-1">Draw Results</p>
+                <p className="text-lg font-bold">{drawNumbers.join(", ")}</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
